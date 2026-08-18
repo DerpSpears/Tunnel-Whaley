@@ -1,0 +1,31 @@
+# Override for mtech.shriniketh.com deployment
+# CTFd is exposed ONLY on host port 11000 and sits behind the Cloudflare tunnel.
+services:
+  ctfd:
+    # !override replaces the base ports list instead of merging (avoids binding 8000)
+    ports: !override
+      - "11000:8000"
+    env_file:
+      - .env
+    environment:
+      - UPLOAD_FOLDER=/var/uploads
+      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@db/ctfd
+      - REDIS_URL=redis://cache:6379
+      # --- Performance tuning (16-core / 62GB host) ---
+      - WORKERS=12
+      - WORKER_CLASS=gevent
+      - WORKER_TEMP_DIR=/dev/shm
+      # Extra gunicorn flags are picked up automatically via GUNICORN_CMD_ARGS.
+      # gevent async workers: each handles many concurrent connections; recycle
+      # workers periodically to avoid slow memory growth.
+      - GUNICORN_CMD_ARGS=--worker-connections=2000 --timeout=120 --graceful-timeout=30 --keep-alive=5 --max-requests=5000 --max-requests-jitter=500
+      - LOG_FOLDER=/var/log/CTFd
+      - ACCESS_LOG=-
+      - ERROR_LOG=-
+      - REVERSE_PROXY=true
+      - SERVER_NAME=mtech.shriniketh.com
+
+  # Disable the bundled nginx (Cloudflare tunnel -> ctfd:11000 directly)
+  nginx:
+    profiles:
+      - donotstart

@@ -1,0 +1,96 @@
+# Instancer stack for mtech.shriniketh.com
+# Use together with the base + override files, one project (ctfd-mtech):
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.instancer.yml up -d --build
+#
+# Cloudflare tunnel should now point at Traefik:  http://localhost:11080
+#   Traefik routes:  /              -> CTFd
+#                    /i/<token>/... -> per-user challenge instances
+#
+# Routing design: Traefik has NO Docker access. It watches a dynamic-config
+# directory; the instancer writes/removes one route file per live instance.
+services:
+  # --- CTFd gains the ability to reach the instancer (server-to-server, internal) ---
+  ctfd:
+    environment:
+      - INSTANCER_URL=http://instancer:8080
+      - INSTANCER_TOKEN=${INSTANCER_TOKEN}
+
+  # --- Single public entrypoint. Only THIS is exposed to the tunnel. ---
+  traefik:
+    image: traefik:v3.2
+    restart: always
+    command:
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+      - --api=false
+      - --ping=false
+      - --log.level=INFO
+      - --accesslog=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.transport.respondingTimeouts.readTimeout=60s
+      - --entrypoints.web.transport.respondingTimeouts.idleTimeout=180s
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+    labels:
+      - "instancer.role=proxy"        # instancer finds Traefik by this label to wire per-instance networks
+    ports:
+      - "11080:80"
+    volumes:
+      - ./instancer/traefik/dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - default        # reach ctfd by name
+
+  # --- Write Docker API for the instancer (create/start/stop/rm containers + networks only) ---
+  dockerproxy-rw:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: always
+    environment:
+      - CONTAINERS=1
+      - NETWORKS=1
+      - IMAGES=1
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - POST=1
+      - ALLOW_START=1
+      - ALLOW_STOP=1
+      - ALLOW_RESTARTS=1
+      - EXEC=0        # never allow docker exec
+      - VOLUMES=0     # never allow volume ops
+      - INFO=0
+      - SWARM=0
+      - SERVICES=0
+      - TASKS=0
+      - SECRETS=0
+      - CONFIGS=0
+      - PLUGINS=0
+      - SYSTEM=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - ctrl
+
+  # --- The instancer control plane. Internal only; bearer-token auth. ---
+  instancer:
+    build: ./instancer/app
+    restart: always
+    environment:
+      - INSTANCER_TOKEN=${INSTANCER_TOKEN}
+      - DOCKER_HOST=tcp://dockerproxy-rw:2375
+      - PUBLIC_BASE=/i
+      - TRAEFIK_ENTRYPOINT=web
+      - PROXY_LABEL=instancer.role=proxy
+      - DYNAMIC_DIR=/etc/traefik/dynamic
+      - MAX_GLOBAL_INSTANCES=100
+    volumes:
+      - ./instancer/traefik/dynamic:/etc/traefik/dynamic:rw   # writes per-instance route files
+    networks:
+      - default        # reachable by ctfd (server-to-server)
+      - ctrl           # reach dockerproxy-rw
+    depends_on:
+      - dockerproxy-rw
+
+networks:
+  # default + internal are shared with the base compose project (same project name)
+  ctrl:
+    internal: true

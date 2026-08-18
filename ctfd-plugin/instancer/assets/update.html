@@ -1,0 +1,51 @@
+{% extends "admin/challenges/update.html" %}
+
+{% block value %}
+<div class="form-group">
+	<label>Value</label>
+	<input type="number" class="form-control" name="value" value="{{ challenge.value }}" required>
+</div>
+
+<div class="form-group">
+	<label>Docker Image</label>
+	<input type="text" class="form-control" name="docker_image" value="{{ challenge.docker_image }}" required>
+</div>
+
+<div class="form-group">
+	<label>Kind</label>
+	<select name="kind" class="custom-select">
+		<option value="web" {% if challenge.kind == "web" %}selected{% endif %}>web</option>
+		<option value="tcp" {% if challenge.kind == "tcp" %}selected{% endif %}>tcp (nc / ttyd)</option>
+	</select>
+</div>
+
+<div class="form-group">
+	<label>Container Port</label>
+	<input type="number" class="form-control" name="port" value="{{ challenge.port }}" required>
+</div>
+
+<div class="form-group">
+	<label>TTL (minutes)</label>
+	<input type="number" class="form-control" name="ttl_minutes" value="{{ challenge.ttl_minutes }}" required>
+</div>
+
+<div class="form-group">
+	<label>Per-user instance limit</label>
+	<input type="number" class="form-control" name="per_user_limit" value="{{ challenge.per_user_limit }}" required>
+</div>
+
+<div class="form-group">
+	<label>Memory (MB)</label>
+	<input type="number" class="form-control" name="mem_mb" value="{{ challenge.mem_mb }}" required>
+</div>
+
+<div class="form-group">
+	<label>CPUs</label>
+	<input type="text" class="form-control" name="cpus" value="{{ challenge.cpus }}" required>
+</div>
+
+<div class="form-group">
+	<label>Flag prefix</label>
+	<input type="text" class="form-control" name="flag_prefix" value="{{ challenge.flag_prefix }}" required>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+# Secrets and local environment
+.env
+*.env
+!.env.example
+
+# CTFd runtime data
+.data/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Per-instance Traefik route files are written at runtime by the instancer.
+# Keep the static CTFd route, ignore everything else in the dynamic dir.
+instancer/traefik/dynamic/*.yml
+!instancer/traefik/dynamic/ctfd.yml
+
+# Editor and OS junk
+.DS_Store
+*.swp
+*~

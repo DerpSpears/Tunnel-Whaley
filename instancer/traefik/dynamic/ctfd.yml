@@ -1,0 +1,21 @@
+# File provider: static routes. Per-instance routes come from the Docker provider (labels).
+http:
+  routers:
+    ctfd:
+      rule: "PathPrefix(`/`)"      # catch-all, lowest priority so /i/<token> wins
+      entryPoints: ["web"]
+      service: ctfd
+      priority: 1
+      middlewares: ["sec-headers"]
+  services:
+    ctfd:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://ctfd:8000"
+  middlewares:
+    sec-headers:
+      headers:
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"

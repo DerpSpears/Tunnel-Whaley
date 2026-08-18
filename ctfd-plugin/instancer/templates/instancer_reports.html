@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+	<div class="container">
+		<h1>Flag Sharing Reports</h1>
+		<p class="mb-0">
+			Submissions where an account entered <b>another account's</b> unique
+			per-user dynamic flag. Each flag is derived from the account id, so a
+			match here means the flag was shared or leaked.
+		</p>
+	</div>
+</div>
+<div class="container">
+	{% if reports %}
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Challenge</th>
+				<th>Submitter (used another's flag)</th>
+				<th>Flag owner</th>
+				<th class="text-center">Attempts</th>
+				<th>Submitted value</th>
+				<th>Last seen (UTC)</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for r in reports %}
+			<tr>
+				<td>{{ r.challenge }} <span class="text-muted">#{{ r.challenge_id }}</span></td>
+				<td><span class="badge badge-danger">{{ r.submitter }}</span> <span class="text-muted">#{{ r.submitter_id }}</span></td>
+				<td>{{ r.owner }} <span class="text-muted">#{{ r.owner_id }}</span></td>
+				<td class="text-center">{{ r.count }}</td>
+				<td><code>{{ r.value }}</code></td>
+				<td>{{ r.updated }}</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	{% else %}
+	<div class="row">
+		<h3 class="opacity-50 text-center w-100 justify-content-center align-self-center">
+			No flag-sharing incidents recorded.
+		</h3>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
