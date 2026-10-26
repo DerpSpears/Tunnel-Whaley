@@ -84,27 +84,16 @@ def _headers():
 
 
 def _stop_user_instance(chal_id, account_id):
-    """Destroy the given account's running instance for a challenge, if any.
-    Best-effort: never raises. Used to auto-stop on correct solve."""
-    try:
-        r = requests.get(
-            _instancer_base() + "/instances",
-            params={"user_id": str(account_id)},
-            headers=_headers(),
-            timeout=15,
-        )
-        items = r.json() if r.content else []
-        if isinstance(items, dict):
-            items = items.get("instances", [])
-        for it in items:
-            if str(it.get("chal_id")) == str(chal_id):
-                requests.delete(
-                    _instancer_base() + "/instances/" + str(it.get("id")),
-                    headers=_headers(),
-                    timeout=15,
-                )
-    except Exception:
-        pass
+    """Destroy the given account's instance(s) for a challenge: the container,
+    its network and its route, whatever state the container is in. Raises if
+    the instancer cannot be reached or refuses, so callers can report it."""
+    r = requests.post(
+        _instancer_base() + "/instances/by",
+        json={"user_id": str(account_id), "chal_id": str(chal_id)},
+        headers=_headers(),
+        timeout=30,
+    )
+    r.raise_for_status()
 
 
 def _record_flag_share(challenge_id, submitter_id, owner_id, value):
@@ -208,7 +197,15 @@ class InstancerChallenge(BaseChallenge):
         # Correct: accept, then auto-stop this account's instance early so it
         # does not keep running until TTL expiry.
         if submission and hmac.compare_digest(submission, expected):
-            _stop_user_instance(challenge.id, account_id)
+            try:
+                _stop_user_instance(challenge.id, account_id)
+            except Exception as e:
+                # The solve still counts; the reaper removes the instance at
+                # its TTL if this call failed.
+                current_app.logger.warning(
+                    "instancer: stop on solve failed for chal %s account %s: %s",
+                    challenge.id, account_id, e,
+                )
             return True, "Correct"
 
         # Incorrect against own flag: check whether it is *another* account's

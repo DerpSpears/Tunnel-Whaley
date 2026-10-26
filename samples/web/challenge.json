@@ -1,0 +1,15 @@
+{
+  "name": "Login Portal",
+  "category": "Web",
+  "value": 100,
+  "description": "A course portal with a homemade login form. Log in as admin to get the flag. Click Start to get your own private instance.",
+  "docker_image": "chal-web-sample:latest",
+  "kind": "web",
+  "port": 8080,
+  "ttl_minutes": 30,
+  "per_user_limit": 1,
+  "mem_mb": 256,
+  "cpus": "0.5",
+  "flag_prefix": "flag",
+  "test": { "method": "POST", "body": "user=admin&pass=' OR '1'='1", "expect": "flag" }
+}

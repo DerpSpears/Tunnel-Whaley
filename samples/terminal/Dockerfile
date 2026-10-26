@@ -2,7 +2,9 @@
 # same /i/<token> path, so it works behind a Cloudflare tunnel with no raw TCP).
 FROM debian:stable-slim
 # ttyd is not in Debian repos; use the official static (musl) release binary.
-ADD https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 /usr/local/bin/ttyd
+# Build with --build-arg TTYD_ARCH=aarch64 on ARM hosts (setup.sh does this).
+ARG TTYD_ARCH=x86_64
+ADD https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TTYD_ARCH} /usr/local/bin/ttyd
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 \
  && rm -rf /var/lib/apt/lists/* \

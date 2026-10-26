@@ -33,7 +33,7 @@ curl -s -o /dev/null -w 'web_status=%{http_code}\n' "$TRAEFIK_URL$WURL"
 echo -n '-- solve via SQLi, flag= '; curl -s "$TRAEFIK_URL$WURL" --data "user=admin&pass=' OR '1'='1" | grep -o 'flag{[^}]*}' | head -1
 
 echo "== 4. create PWN (ttyd) instance =="
-PWN=$(api POST /instances '{"chal_id":2,"user_id":1,"image":"chal-pwn-sample:latest","port":8080,"flag":"flag{pwn_dynamic_1}","kind":"tcp","ttl":30,"per_user_limit":2}')
+PWN=$(api POST /instances '{"chal_id":2,"user_id":1,"image":"chal-terminal-sample:latest","port":8080,"flag":"flag{pwn_dynamic_1}","kind":"tcp","ttl":30,"per_user_limit":2}')
 echo "$PWN"
 PURL=$(echo "$PWN" | python3 -c 'import sys,json;print(json.load(sys.stdin)["url"])')
 PIID=$(echo "$PWN" | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')

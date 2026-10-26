@@ -1,0 +1,15 @@
+{
+  "name": "Guess the Number",
+  "category": "Misc",
+  "value": 100,
+  "description": "Guess a number between 1 and 100 in seven tries and the flag is yours. Click Start to open your own terminal in the browser.",
+  "docker_image": "chal-terminal-sample:latest",
+  "kind": "tcp",
+  "port": 8080,
+  "ttl_minutes": 30,
+  "per_user_limit": 1,
+  "mem_mb": 256,
+  "cpus": "0.5",
+  "flag_prefix": "flag",
+  "test": { "method": "GET", "expect": "ttyd" }
+}

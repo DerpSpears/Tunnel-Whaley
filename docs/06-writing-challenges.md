@@ -1,6 +1,7 @@
 # Writing your own instanced challenges
 
-This project ships two tiny samples you can copy. The rules below are what make
+This project ships two tiny samples you can copy, in `samples/`. See
+`samples/README.md` for how to copy one and how `challenge.json` works. The rules below are what make
 a challenge behave well behind the instancer and the tunnel.
 
 ## The contract every challenge follows
@@ -17,7 +18,7 @@ a challenge behave well behind the instancer and the tunnel.
 
 ## Web challenges (kind: web)
 
-See `instancer/challenges/web-sample`. It is a single-file Python HTTP server
+See `samples/web`. It is a single-file Python HTTP server
 that:
 
 - reads the flag from `FLAG`
@@ -36,7 +37,7 @@ path, read `INSTANCE_BASE` and configure the framework's base URL from it.
 
 ## Interactive challenges (kind: tcp) through ttyd
 
-See `instancer/challenges/pwn-sample`. A raw TCP service cannot travel through a
+See `samples/terminal`. A raw TCP service cannot travel through a
 normal HTTP tunnel, so instead of exposing a socket we run the program inside
 ttyd, which serves an interactive terminal over HTTP and WebSocket. The player
 gets a real terminal in the browser, and everything still rides the one tunnel.

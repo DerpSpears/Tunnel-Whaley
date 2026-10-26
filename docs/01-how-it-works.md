@@ -59,15 +59,28 @@ This project does that with four small pieces:
    moment. The player opens `/i/<token>/` and reaches their own container.
    Everything else still falls through to CTFd.
 
-## What happens when the player solves it
+## How an instance ends
 
-When the player submits the correct flag, the plugin accepts it and then
-immediately asks the instancer to stop that player's container for the
-challenge, so it does not sit idle until the time to live runs out. If the
-player never solves, a background reaper inside the instancer checks every
-thirty seconds and destroys any instance whose time to live has passed. Either
-way the container, its private network, and its route file are all removed
-together.
+An instance is always removed completely: its container is force-killed, and
+its private network and its route file are deleted with it. That happens in
+any of these cases:
+
+- **The player solves it.** When the player submits the correct flag, the plugin
+  accepts it and immediately asks the instancer to remove that player's
+  instance for the challenge, so it does not sit idle until its time runs out.
+- **The player presses Stop.** Same removal, on demand. If the instancer cannot
+  be reached, the player is told it failed instead of being told it stopped.
+- **Its time runs out.** A background reaper inside the instancer runs every 10
+  seconds (`REAP_INTERVAL`) and removes any instance past its time to live, so an
+  instance ends at most 10 seconds after its time is up.
+- **Its container crashes or exits.** The reaper also removes instances whose
+  container is no longer running, on the next pass. Starting the challenge again
+  also clears out a dead leftover first.
+
+On each pass the reaper also deletes instance networks and route files that no
+longer belong to any container, for example after a container was removed by
+hand. Stop and solve remove the player's instance whatever state its container
+is in, not only when it is running.
 
 ## Why routing works over a single port
 

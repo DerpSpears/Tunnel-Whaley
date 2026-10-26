@@ -1,5 +1,9 @@
 # Setup
 
+`setup.sh` in the repository root does every step below for you, interactively.
+See "Setup with setup.sh" in the README. This page is the manual version, for
+when you want to add the instancer to an existing CTFd yourself.
+
 This guide sets up CTFd with the instancer on a fresh host. The commands assume
 a Linux host with Docker Engine and the `docker compose` plugin installed.
 
@@ -102,21 +106,23 @@ The instancer starts containers from images that already exist on the host.
 Build the two samples:
 
 ```
-docker build -t chal-web-sample:latest instancer/challenges/web-sample
-docker build -t chal-pwn-sample:latest instancer/challenges/pwn-sample
+docker build -t chal-web-sample:latest samples/web
+docker build -t chal-terminal-sample:latest samples/terminal
 ```
 
 ## 6. Create the challenges in CTFd
 
 In the CTFd admin panel, create a new challenge and pick the "instancer" type.
-Fill in the fields the plugin adds:
+Fill in the fields the plugin adds. Each sample's `challenge.json` lists the
+values to use:
 
 - Docker image: for example `chal-web-sample:latest`
 - Kind: `web` for HTTP challenges, `tcp` for interactive terminal challenges
   served through ttyd
 - Port: the port your container listens on inside the image (8080 for both
   samples)
-- TTL minutes: how long an instance lives before the reaper stops it (30 is a
+- TTL minutes: how long an instance lives before the reaper removes it, within
+  10 seconds of the deadline (30 is a
   reasonable default)
 - Per user limit: how many live instances one account may have **across all
   instancer challenges**, not just this one. With 1, a player must stop their

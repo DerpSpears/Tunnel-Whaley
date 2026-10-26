@@ -35,12 +35,16 @@ ENTRYPOINT = os.environ.get("TRAEFIK_ENTRYPOINT", "web")
 PROXY_LABEL = os.environ.get("PROXY_LABEL", "instancer.role=proxy")
 DYNAMIC_DIR = os.environ.get("DYNAMIC_DIR", "/etc/traefik/dynamic")
 MAX_GLOBAL = int(os.environ.get("MAX_GLOBAL_INSTANCES", "100"))
+REAP_INTERVAL = int(os.environ.get("REAP_INTERVAL", "10"))  # seconds between reaper passes
 
 LABEL = "instancer.managed"
 LIVE = ("created", "running", "restarting")
 
 app = Flask(__name__)
 cli = docker.DockerClient(base_url=DOCKER_HOST)
+# The socket proxy drops idle keep-alive connections; reusing one fails with
+# "Connection aborted". A fresh local connection per request avoids that.
+cli.api.headers["Connection"] = "close"
 _lock = threading.Lock()
 
 
@@ -185,8 +189,13 @@ def create():
 
     with _lock:
         # Idempotent: reuse a live instance for this (user, chal)
-        for c in live(list_managed(user=user_id, chal=chal_id)):
+        mine = list_managed(user=user_id, chal=chal_id)
+        for c in live(mine):
             return jsonify(view(c))
+        # Anything left for this (user, chal) has crashed or exited: clear it
+        # out before starting a fresh one.
+        for c in mine:
+            _destroy(c.labels.get("instancer.iid"))
 
         # Per-user cap (across all challenges) + global cap
         if len(live(list_managed(user=user_id))) >= per_user:
@@ -277,19 +286,43 @@ def destroy_by():
     return jsonify({"ok": True})
 
 
+def reap_once():
+    """One cleanup pass. Removes instances that are past their TTL or whose
+    container has exited or died, then any instance networks and Traefik
+    route files that no longer belong to a container. Holds the lock for the
+    whole pass so it never races a create (which makes the network first)."""
+    now = int(time.time())
+    with _lock:
+        for c in list_managed():
+            iid = c.labels.get("instancer.iid")
+            exp = int(c.labels.get("instancer.expires", "0"))
+            if exp and now > exp:
+                log.info("reaping expired %s", iid)
+                _destroy(iid)
+            elif c.status not in LIVE:
+                log.info("reaping %s instance %s", c.status, iid)
+                _destroy(iid)
+
+        alive = {c.labels.get("instancer.iid") for c in list_managed()}
+        for n in cli.networks.list(filters={"label": f"{LABEL}=1"}):
+            iid = (n.attrs.get("Labels") or {}).get("instancer.iid")
+            if iid and iid not in alive:
+                log.info("removing orphan network %s", n.name)
+                _destroy(iid)
+        for name in os.listdir(DYNAMIC_DIR):
+            iid, ext = os.path.splitext(name)
+            if ext == ".yml" and iid != "ctfd" and iid not in alive:
+                log.info("removing orphan route %s", name)
+                remove_route(iid)
+
+
 def reaper():
     while True:
         try:
-            now = int(time.time())
-            for c in list_managed():
-                exp = int(c.labels.get("instancer.expires", "0"))
-                if exp and now > exp:
-                    log.info("reaping expired %s", c.labels.get("instancer.iid"))
-                    with _lock:
-                        _destroy(c.labels.get("instancer.iid"))
+            reap_once()
         except Exception as e:
             log.warning("reaper: %s", e)
-        time.sleep(30)
+        time.sleep(REAP_INTERVAL)
 
 
 threading.Thread(target=reaper, daemon=True).start()
