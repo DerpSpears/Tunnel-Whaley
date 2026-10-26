@@ -367,11 +367,20 @@ services:
   traefik:
     ports: !override
       - "$bind:$traefik_port:80"
+    labels:
+      - "instancer.role=proxy-$project"   # matched by PROXY_LABEL below
 
   # Traefik is the front door, so CTFd's bundled nginx is not used.
   nginx:
     profiles:
       - donotstart
+
+  # Each install gets its own instance namespace and proxy label, so several
+  # Tunnel-Whaley stacks on one host never touch each other's instances.
+  instancer:
+    environment:
+      - INSTANCER_NAMESPACE=$project
+      - PROXY_LABEL=instancer.role=proxy-$project
 
   # SELinux (Fedora, RHEL, ...) never lets a container open docker.sock, so
   # the socket proxy runs unconfined. No effect on hosts without SELinux.

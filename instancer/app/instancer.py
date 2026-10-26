@@ -38,6 +38,10 @@ MAX_GLOBAL = int(os.environ.get("MAX_GLOBAL_INSTANCES", "100"))
 REAP_INTERVAL = int(os.environ.get("REAP_INTERVAL", "10"))  # seconds between reaper passes
 
 LABEL = "instancer.managed"
+# Value of LABEL on everything this instancer creates. Give each stack on a
+# host its own namespace (and its own PROXY_LABEL) so stacks never see, count,
+# reuse or reap each other's instances. "1" is the original single-stack value.
+NAMESPACE = os.environ.get("INSTANCER_NAMESPACE", "1")
 LIVE = ("created", "running", "restarting")
 
 app = Flask(__name__)
@@ -57,11 +61,15 @@ def traefik_container():
     cs = cli.containers.list(filters={"label": f"{key}={val}"})
     if not cs:
         raise RuntimeError("Traefik proxy container not found (label %s)" % PROXY_LABEL)
+    if len(cs) > 1:
+        # Picking one would wire instances to the wrong stack's proxy.
+        raise RuntimeError("%d containers carry the proxy label %s; give each stack its own"
+                           % (len(cs), PROXY_LABEL))
     return cs[0]
 
 
 def list_managed(**filt):
-    labels = [f"{LABEL}=1"] + [f"instancer.{k}={v}" for k, v in filt.items()]
+    labels = [f"{LABEL}={NAMESPACE}"] + [f"instancer.{k}={v}" for k, v in filt.items()]
     return cli.containers.list(all=True, filters={"label": labels})
 
 
@@ -126,7 +134,7 @@ def _destroy(iid):
             c.remove(force=True)
         except Exception as e:
             log.warning("remove container %s: %s", iid, e)
-    for n in cli.networks.list(filters={"label": [f"{LABEL}=1", f"instancer.iid={iid}"]}):
+    for n in cli.networks.list(filters={"label": [f"{LABEL}={NAMESPACE}", f"instancer.iid={iid}"]}):
         try:
             try:
                 n.disconnect(traefik_container(), force=True)
@@ -211,7 +219,7 @@ def create():
         expires = int(time.time()) + ttl * 60
 
         labels = {
-            LABEL: "1",
+            LABEL: NAMESPACE,
             "instancer.iid": iid,
             "instancer.user": user_id,
             "instancer.chal": chal_id,
@@ -239,7 +247,7 @@ def create():
         try:
             net = cli.networks.create(
                 netname, driver="bridge", internal=True,
-                labels={LABEL: "1", "instancer.iid": iid},
+                labels={LABEL: NAMESPACE, "instancer.iid": iid},
             )
             c = cli.containers.create(
                 image, name=cname, detach=True, hostname="challenge",
@@ -304,7 +312,7 @@ def reap_once():
                 _destroy(iid)
 
         alive = {c.labels.get("instancer.iid") for c in list_managed()}
-        for n in cli.networks.list(filters={"label": f"{LABEL}=1"}):
+        for n in cli.networks.list(filters={"label": f"{LABEL}={NAMESPACE}"}):
             iid = (n.attrs.get("Labels") or {}).get("instancer.iid")
             if iid and iid not in alive:
                 log.info("removing orphan network %s", n.name)
