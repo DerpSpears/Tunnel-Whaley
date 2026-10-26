@@ -11,6 +11,30 @@ a Linux host with Docker Engine and the `docker compose` plugin installed.
 - Optional but recommended: a Cloudflare account and the `cloudflared` daemon if
   you want to expose the event through a tunnel. See `03-cloudflare-tunnel.md`.
 
+## 0. Raise Docker's network limit
+
+Every instance gets its own private Docker network. With Docker's default
+address pools the daemon can only create about 30 bridge networks, so once
+roughly 30 instances are live, new ones fail with:
+
+```
+could not find an available, non-overlapping IPv4 address pool among the defaults to assign to the network
+```
+
+Fix this once per host by giving Docker smaller (/24) subnets. Copy
+`docker/daemon.json.example` to `/etc/docker/daemon.json` (merge it by hand if
+you already have that file), then restart Docker:
+
+```
+sudo cp docker/daemon.json.example /etc/docker/daemon.json
+sudo systemctl restart docker
+docker info | grep -A3 "Default Address Pools"
+```
+
+That gives room for about 4,350 networks. Restarting Docker briefly stops every
+container on the host, so do this before the event. Networks that already exist
+keep their old subnets; only new ones use the pools.
+
 ## 1. Drop the plugin into CTFd
 
 Copy the plugin folder into your CTFd tree so it lands at
@@ -67,6 +91,11 @@ Traefik now listens on host port 11080 and forwards `/` to CTFd and
 `/i/<token>/` to instances. CTFd is also reachable directly on its own host port
 for admin use.
 
+The instancer refuses to run more than `MAX_GLOBAL_INSTANCES` live instances
+across all players (default 100); past that, players get a `global_limit` error.
+Size it for your event by setting `MAX_GLOBAL_INSTANCES` in `.env`, keeping host
+memory in mind (each instance is capped at its challenge's Memory MB).
+
 ## 5. Build the sample challenge images
 
 The instancer starts containers from images that already exist on the host.
@@ -89,8 +118,12 @@ Fill in the fields the plugin adds:
   samples)
 - TTL minutes: how long an instance lives before the reaper stops it (30 is a
   reasonable default)
-- Per user limit: how many instances of this challenge one account may run at
-  once (usually 1)
+- Per user limit: how many live instances one account may have **across all
+  instancer challenges**, not just this one. With 1, a player must stop their
+  current instance before starting a different challenge. Starting the same
+  challenge again just returns the existing instance. The value set on the
+  challenge being started is the one checked, so keep it the same on every
+  challenge unless you mean otherwise.
 - Memory MB and CPUs: the per-instance resource caps
 - Flag prefix: the text before the braces in the flag, for example `flag`
 

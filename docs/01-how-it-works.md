@@ -45,7 +45,8 @@ This project does that with four small pieces:
    the port, the player's flag, the challenge kind (web or tcp), the time to
    live, and the resource limits.
 5. The instancer checks two caps: a global cap on the total number of live
-   instances and a per-user cap. If either is exceeded it returns a clear error
+   instances (`MAX_GLOBAL_INSTANCES`) and a per-user cap that counts the
+   player's live instances across all challenges. If either is exceeded it returns a clear error
    (429 for the per-user cap, 503 for the global cap) and creates nothing.
 6. The instancer creates a fresh private network for that instance, then creates
    the container from the challenge image with the flag injected as the FLAG

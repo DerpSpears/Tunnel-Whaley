@@ -26,6 +26,8 @@ you can read the whole thing end to end and drop it into your own CTFd setup.
 - `instancer/challenges/pwn-sample/` A tiny interactive challenge served as a
   browser terminal through ttyd, so a classic netcat style task works over plain
   HTTP.
+- `docker/daemon.json.example` Docker daemon address pools so the host can
+  create enough per-instance networks.
 - `compose/` The Docker Compose files that wire CTFd, Traefik, the Docker socket
   proxy, and the instancer together.
 - `instancer/test_instancer.sh` An end to end smoke test for the control plane.
@@ -43,13 +45,15 @@ you can read the whole thing end to end and drop it into your own CTFd setup.
 
 ## Quick start
 
-1. Copy `ctfd-plugin/instancer` into your CTFd tree at `CTFd/plugins/instancer`.
-2. Copy the `instancer/` folder and `compose/docker-compose.instancer.yml` into
+1. Raise Docker's network limit so more than ~30 instances can run: copy
+   `docker/daemon.json.example` to `/etc/docker/daemon.json` and restart Docker.
+2. Copy `ctfd-plugin/instancer` into your CTFd tree at `CTFd/plugins/instancer`.
+3. Copy the `instancer/` folder and `compose/docker-compose.instancer.yml` into
    your CTFd checkout.
-3. Copy `.env.example` to `.env` and set `SECRET_KEY` and `INSTANCER_TOKEN`.
-4. Bring the stack up:
+4. Copy `.env.example` to `.env` and set `SECRET_KEY` and `INSTANCER_TOKEN`.
+5. Bring the stack up:
    `docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.instancer.yml up -d --build`
-5. Build the sample images and create challenges of type "instancer" in the CTFd
+6. Build the sample images and create challenges of type "instancer" in the CTFd
    admin panel.
 
 Full steps are in `docs/02-setup.md`.

@@ -81,7 +81,7 @@ services:
       - TRAEFIK_ENTRYPOINT=web
       - PROXY_LABEL=instancer.role=proxy
       - DYNAMIC_DIR=/etc/traefik/dynamic
-      - MAX_GLOBAL_INSTANCES=100
+      - MAX_GLOBAL_INSTANCES=${MAX_GLOBAL_INSTANCES:-100}
     volumes:
       - ./instancer/traefik/dynamic:/etc/traefik/dynamic:rw   # writes per-instance route files
     networks:
