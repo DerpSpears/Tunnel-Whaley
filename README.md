@@ -69,3 +69,25 @@ designs.
 Never commit your real `.env`. It holds `SECRET_KEY` (which also derives every
 player flag) and `INSTANCER_TOKEN` (the shared secret between CTFd and the
 instancer). The `.gitignore` in this repo already excludes it.
+
+## Note: instance limit (~30) and how to fix it
+
+Out of the box, a host can only run about 30 instances at once. Each instance
+gets its own private Docker network, and Docker's default address pools run out
+after roughly 30 networks. When that happens, starting a new instance fails with:
+
+```
+could not find an available, non-overlapping IPv4 address pool among the defaults to assign to the network
+```
+
+This can be fixed by giving Docker smaller (/24) subnets, which raises the limit
+to about 4,350 networks:
+
+```
+sudo cp docker/daemon.json.example /etc/docker/daemon.json   # merge by hand if the file already exists
+sudo systemctl restart docker                                # briefly stops all containers on the host
+docker info | grep -A3 "Default Address Pools"               # confirm the new pools
+```
+
+After that, the cap that applies is `MAX_GLOBAL_INSTANCES` (default 100), which
+you can raise in `.env`. Full details are in `docs/02-setup.md`, step 0.
