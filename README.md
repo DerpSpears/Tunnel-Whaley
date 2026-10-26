@@ -152,7 +152,7 @@ If you would rather wire it into an existing CTFd yourself:
    your CTFd checkout.
 4. Copy `.env.example` to `.env` and set `SECRET_KEY` and `INSTANCER_TOKEN`.
 5. Bring the stack up:
-   `docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.instancer.yml up -d --build`
+   `docker compose -f docker-compose.yml -f docker-compose.instancer.yml -f docker-compose.override.yml up -d --build`
 6. Build the sample images (`samples/`) and create challenges of type
    "instancer" in the CTFd admin panel.
 

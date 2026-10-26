@@ -88,7 +88,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 From the CTFd checkout, start everything as one project:
 
 ```
-docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.instancer.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.instancer.yml -f docker-compose.override.yml up -d --build
 ```
 
 Traefik now listens on host port 11080 and forwards `/` to CTFd and

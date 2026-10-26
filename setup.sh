@@ -386,7 +386,7 @@ cat > "$install_dir/compose.sh" <<EOF
 # Run docker compose for this Tunnel-Whaley install, e.g.
 #   ./compose.sh ps    ./compose.sh logs -f instancer    ./compose.sh down
 cd "\$(dirname "\$0")" || exit 1
-exec docker compose -p $project -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.instancer.yml "\$@"
+exec docker compose -p $project -f docker-compose.yml -f docker-compose.instancer.yml -f docker-compose.override.yml "\$@"
 EOF
 chmod +x "$install_dir/compose.sh"
 
@@ -399,6 +399,18 @@ if command -v getenforce >/dev/null && [ "$(getenforce 2>/dev/null)" != Disabled
     || die "Could not set the SELinux label on $install_dir (chcon failed)."
 fi
 "$install_dir/compose.sh" config -q || die "The generated Compose configuration is invalid."
+# The override is loaded last so its ports win; make sure only the two chosen
+# ports end up published.
+published=$("$install_dir/compose.sh" config --format json | python3 -I -c '
+import json, sys
+cfg = json.load(sys.stdin)
+ports = set()
+for svc in cfg.get("services", {}).values():
+    for p in svc.get("ports") or []:
+        ports.add(str(p.get("published")))
+print(" ".join(sorted(ports)))')
+[ "$published" = "$(printf '%s\n' "$ctfd_port" "$traefik_port" | sort | tr '\n' ' ' | sed 's/ $//')" ] \
+  || die "The Compose configuration would publish ports [$published], expected only $ctfd_port and $traefik_port."
 
 section "Building challenge images"
 for f in "$install_dir"/samples/*/challenge.json; do
